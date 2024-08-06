@@ -5,7 +5,7 @@ const readline = require('readline');
 
 const namespaceFile = path.join(__dirname, 'namespaces.json');
 const openvpnConfigPath = process.argv[2];
-const timeout = parseInt(process.argv[3], 10) || 10;
+const timeout = parseInt(process.argv[3], 10) || 60;
 
 if (!openvpnConfigPath) {
     console.error('Lütfen OpenVPN yapılandırma dosyasının yolunu belirtin.');
@@ -93,6 +93,27 @@ function calculateTotalTraffic(outputs){
     return{ totalSent, totalReceived};
 }
 
+function calculateMaxTraffic(outputs) {
+    let maxSent = 0;
+    let maxReceived = 0;
+
+    outputs.forEach(({ nsName, output }) => {
+        try {
+            const data = JSON.parse(output);
+            const sent = data.end.sum_sent.bytes;
+            const received = data.end.sum_received.bytes;
+            if( sent > maxSent) maxSent = sent;
+            if (received > maxReceived) maxReceived = received;
+
+        } catch (error) {
+            console.error(`${nsName} için iperf3 çıktısını işlerken hata :`, error.message);
+            
+        }
+    });
+
+    return { maxSent, maxReceived};
+}
+
 function parseIperf3Output({ nsName, output }) {
     try {
         const data = JSON.parse(output);
@@ -138,6 +159,8 @@ async function connectAllNamespaces(configPath, duration) {
 
         const { totalSent, totalReceived } = calculateTotalTraffic(iperf3Outputs);
 
+        const {maxSent , maxReceived } = calculateMaxTraffic(iperf3Outputs);
+
         const endTime = Date.now();
         const elapsedTime = Math.round((endTime - startTime) / 1000);
 
@@ -148,6 +171,8 @@ async function connectAllNamespaces(configPath, duration) {
         console.log(`Ortalama hız: ${averageThroughput.toFixed(2)} Mbps`);
         console.log(`Toplam giden trafik: ${(totalSent / 1000000).toFixed(2)} MB`);
         console.log(`Toplam gelen trafik: ${(totalReceived / 1000000).toFixed(2)} MB`);
+        console.log(`Maksimum giden trafik: ${(maxSent / 1000000).toFixed(2)} MB`);
+        console.log(`Maksimum gelen trafik: ${(maxReceived / 1000000).toFixed(2)} MB`);
         console.log(`Toplam geçen süre: ${elapsedTime} saniye.`);
         process.exit();
     }, duration * 1000);
