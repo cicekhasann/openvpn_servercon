@@ -26,6 +26,8 @@ function handleMenuOption(option) {
             rl.close();
             break;
         case '3':
+            execSync(`node baglanti.js "path"`, { stdio: 'inherit' });
+	    process.exit();
             rl.question('OpenVPN yapılandırma dosyasının yolunu girin: ', (configPath) => {
                 execSync(`node baglanti.js ${configPath}`, { stdio: 'inherit' });
                 rl.close();
