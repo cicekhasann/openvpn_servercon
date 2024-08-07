@@ -1,0 +1,25 @@
+{
+  "name": "openvpn_server",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "start": "node main.js",
+    "prepare": "node hazirlik.js",
+    "clean": "node temizlik.js",
+    "connect": "node baglanti.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cicekhasann/openvpn_servercon.git"
+  },
+  "dependencies": {
+    "readline": "^1.3.0"
+  },
+  "author": "hasan cicek",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/cicekhasann/openvpn_servercon/issues"
+  },
+  "homepage": "https://github.com/cicekhasann/openvpn_servercon#readme",
+  "description": ""
+}
