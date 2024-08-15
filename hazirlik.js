@@ -49,46 +49,54 @@ function checkNamespaceExists(nsName) {
     }
 }
 
-function createBridge() {
+function createBridge(bridgeIndex) {
+    const bridgeName = `br${bridgeIndex}`;
+    const baseIP = 192;
+    const secondOctet = 168;
+    const thirdOctet = bridgeIndex * 4; // Her bridge için üçüncü okteti 4'er artır
+
+    const bridgeIP = `${baseIP}.${secondOctet}.${thirdOctet}.1/22`;
+
     try {
         disableUFW();
         configureSysctl();
-        
-        if (!checkBridgeExists('br0')) {
-            execSync('ip link add name br0 type bridge');
-            execSync('ip link set dev br0 up');
-            execSync('ip addr add 192.168.0.1/16 dev br0');
-            console.log('Bridge br0 başarıyla oluşturuldu.');
+
+        if (!checkBridgeExists(bridgeName)) {
+            execSync(`ip link add name ${bridgeName} type bridge`);
+            execSync(`ip link set dev ${bridgeName} up`);
+            execSync(`ip addr add ${bridgeIP} dev ${bridgeName}`);
+            console.log(`Bridge ${bridgeName} başarıyla oluşturuldu.`);
         } else {
-            console.log('Bridge br0 zaten mevcut.');
+            console.log(`Bridge ${bridgeName} zaten mevcut.`);
         }
     } catch (error) {
-        console.error('Bridge oluşturulurken hata oluştu:', error.message);
+        console.error(`Bridge ${bridgeName} oluşturulurken hata oluştu:`, error.message);
     }
 }
 
-function createNamespaceAndVeth(index) {
+function createNamespaceAndVeth(index, bridgeIndex) {
     const nsName = `vpnns${index}`;
     const vethHost = `ve${index}a`;
     const vethNs = `ve${index}b`;
 
-    // Dinamik IP adresi hesaplama
     const baseIP = 192;
     const secondOctet = 168;
-    const thirdOctet = Math.floor((index + 2) / 254);
-    const lastOctet = (index + 2) % 254;
+    const thirdOctet = bridgeIndex * 4; // Her köprü için üçüncü okteti 4'er artır
+    const fourthOctet = (index % 1000) + 2; // Dördüncü okteti 1 ile 1024 arasında tutun
 
-    const ipAddress = `${baseIP}.${secondOctet}.${thirdOctet}.${lastOctet}`;
-
+    // Eğer lastOctet 255'i geçerse, üçüncü oktet artırılmalı
+    const finalThirdOctet = thirdOctet + Math.floor((index % 1000) / 252);
+    const finalFourthOctet = (fourthOctet - 1) % 252 + 2;
+    const ipAddress = `${baseIP}.${secondOctet}.${finalThirdOctet}.${finalFourthOctet}`;
     try {
         if (!checkNamespaceExists(nsName)) {
             execSync(`ip netns add ${nsName}`);
             execSync(`ip link add ${vethHost} type veth peer name ${vethNs}`);
             execSync(`ip link set ${vethNs} netns ${nsName}`);
             execSync(`ip netns exec ${nsName} ip link set ${vethNs} up`);
-            execSync(`ip netns exec ${nsName} ip addr add ${ipAddress}/16 dev ${vethNs}`);
-            execSync(`ip netns exec ${nsName} ip route add default via 192.168.0.1 dev ${vethNs}`);
-            execSync(`ip link set ${vethHost} master br0`);
+            execSync(`ip netns exec ${nsName} ip addr add ${ipAddress}/22 dev ${vethNs}`);
+            execSync(`ip netns exec ${nsName} ip route add default via ${baseIP}.${secondOctet}.${thirdOctet}.1 dev ${vethNs}`);
+            execSync(`ip link set ${vethHost} master br${bridgeIndex}`);
             execSync(`ip link set ${vethHost} up`);
 
             saveNamespaceInfo({ nsName, vethHost, vethNs });
@@ -102,10 +110,16 @@ function createNamespaceAndVeth(index) {
 }
 
 function createMultipleNamespacesAndVeths(count) {
-    createBridge();
+    const maxNamespacesPerBridge = 1000;
+    const totalBridges = Math.ceil(count / maxNamespacesPerBridge);
+
+    for (let i = 0; i < totalBridges; i++) {
+        createBridge(i);
+    }
 
     for (let i = 0; i < count; i++) {
-        createNamespaceAndVeth(i);
+        const bridgeIndex = Math.floor(i / maxNamespacesPerBridge);
+        createNamespaceAndVeth(i, bridgeIndex);
     }
 }
 
