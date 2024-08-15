@@ -21,20 +21,32 @@ function deleteNamespaceAndVeth(info) {
     }
 }
 
-function deleteBridge() {
+function deleteBridge(bridgeName) {
     try {
-        execSync('ip link delete br0 type bridge');
-        console.log('Bridge br0 başarıyla silindi.');
+        execSync(`ip link delete ${bridgeName} type bridge`);
+        console.log(`Bridge ${bridgeName} başarıyla silindi.`);
     } catch (error) {
-        console.error('Bridge silinirken hata oluştu:', error.message);
+        console.error(`Bridge ${bridgeName} silinirken hata oluştu:`, error.message);
     }
 }
 
 function cleanUp() {
     const namespaces = loadNamespaceInfo();
     namespaces.forEach(deleteNamespaceAndVeth);
-    deleteBridge();
-    fs.unlinkSync(namespaceFile);
+
+    // 30 adet köprüyü sil
+    for (let i = 0; i < 30; i++) {
+        const bridgeName = `br${i}`;
+        deleteBridge(bridgeName);
+    }
+
+    // namespace dosyasını sil
+    if (fs.existsSync(namespaceFile)) {
+        fs.unlinkSync(namespaceFile);
+        console.log('Namespace bilgileri dosyası başarıyla silindi.');
+    } else {
+        console.log('Namespace bilgileri dosyası bulunamadı.');
+    }
 }
 
 // Temizlik işlemini başlat
