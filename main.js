@@ -26,7 +26,7 @@ function handleMenuOption(option) {
             rl.close();
             break;
         case '3':
-            execSync(`node baglanti.js "path"`, { stdio: 'inherit' });
+            execSync(`node baglanti.js /home/antikor/Desktop/OPENVPN_SERVER/openvpn_servercon/1021252.ovpn`, { stdio: 'inherit' });
 	    process.exit();
             rl.question('OpenVPN yapılandırma dosyasının yolunu girin: ', (configPath) => {
                 execSync(`node baglanti.js ${configPath}`, { stdio: 'inherit' });
